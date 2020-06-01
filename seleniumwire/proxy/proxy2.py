@@ -99,8 +99,10 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         conn = None
         try:
             conn = self.create_connection(origin)
+            print('Sending request for {}'.format(origin))
             conn.request(self.command, path, req_body, dict(req.headers))
             res = conn.getresponse()
+            print('Got response')
 
             if res.headers.get('Upgrade') == 'websocket':
                 self.websocket = True
@@ -164,6 +166,9 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
                 connection = ProxyAwareHTTPConnection
 
             self.tls.conns[origin] = connection(proxy_config, netloc, **kwargs)
+            print('NOT using cached connection for {}'.format(origin))
+        else:
+            print('Using cached connection for {}'.format(origin))
 
         return self.tls.conns[origin]
 
