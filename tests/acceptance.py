@@ -11,7 +11,20 @@ class BrowserIntegrationTest(TestCase):
 
     def test_firefox_can_access_requests(self):
         url = 'https://www.python.org/'
-        driver = webdriver.Firefox()
+        options = {
+            'proxy': {
+                'http': 'https://78.60.203.75:55876',
+                'https': 'https://78.60.203.75:55876'
+            },
+            # 'proxy': {
+            #     'http': 'https://localhost:8080',
+            #     'https': 'https://localhost:8080'
+            # },
+            'connection_timeout': 600,
+            'disable_encoding': True,
+            'verify_ssl': False
+        }
+        driver = webdriver.Firefox(seleniumwire_options=options)
         driver.get(url)
 
         request = driver.wait_for_request(url)
