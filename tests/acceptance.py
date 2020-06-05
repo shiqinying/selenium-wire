@@ -13,14 +13,10 @@ class BrowserIntegrationTest(TestCase):
         url = 'https://www.python.org/'
         options = {
             'proxy': {
-                'http': 'https://78.60.203.75:55876',
-                'https': 'https://78.60.203.75:55876'
+                'http': 'https://localhost:8080',
+                'https': 'https://localhost:8080'
             },
-            # 'proxy': {
-            #     'http': 'https://localhost:8080',
-            #     'https': 'https://localhost:8080'
-            # },
-            'connection_timeout': 600,
+            'connection_timeout': 5,
             'disable_encoding': True,
             'verify_ssl': False
         }

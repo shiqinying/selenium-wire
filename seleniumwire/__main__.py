@@ -5,7 +5,7 @@ import signal
 
 from seleniumwire.proxy import client, util
 
-logging.basicConfig(level=logging.DEBUG, format='%(message)s')
+logging.basicConfig(level=logging.ERROR, format='%(message)s')
 
 
 def standalone_proxy(port=0):
@@ -18,7 +18,13 @@ def standalone_proxy(port=0):
     c.create_proxy(port=int(port), options={
         'standalone': True,
         'verify_ssl': False,
-    })
+        'connection_timeout': 60,
+    },
+    proxy_config={
+        'http': 'http://localhost:8080',
+        'https': 'https://localhost:8080',
+    }
+    )
 
 
 if __name__ == '__main__':

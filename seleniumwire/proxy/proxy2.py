@@ -21,7 +21,28 @@ from socketserver import ThreadingMixIn
 from . import cert, socks
 
 
-class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+class BoundedThreadingMixin(ThreadingMixIn):
+
+    max_threads = 30
+    thread_sema = threading.BoundedSemaphore(value=max_threads)
+
+    def process_request_thread(self, request, client_address):
+        super().process_request_thread(request, client_address)
+        self.thread_sema.release()
+
+    def process_request(self, request, client_address):
+        t = threading.Thread(target=self.process_request_thread,
+                             args=(request, client_address))
+        t.daemon = self.daemon_threads
+        if not t.daemon and self._block_on_close:
+            if self._threads is None:
+                self._threads = []
+            self._threads.append(t)
+        self.thread_sema.acquire()
+        t.start()
+
+
+class ThreadingHTTPServer(BoundedThreadingMixin, HTTPServer):
     address_family = socket.AF_INET6
     daemon_threads = True
 
@@ -65,6 +86,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             self.close_connection = True
 
     def do_GET(self):
+        print('Handler {} {}'.format(id(self), self.path))
         if self.path.startswith(self.admin_path):
             self.admin_handler()
             return
@@ -117,9 +139,9 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
                 del self.tls.conns[origin]
             self.send_error(502)
             return
-        finally:
-            if conn and not self.websocket:
-                conn.close()
+        # finally:
+        #     if conn and not self.websocket:
+        #         conn.close()
 
         res_body_modified = self.response_handler(req, req_body, res, res_body)
         if res_body_modified is False:
@@ -131,6 +153,9 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             res.headers['Content-Length'] = str(len(res_body))
 
         setattr(res, 'headers', self.filter_headers(res.headers))
+
+        # del res.headers['Connection']
+        # res.headers['Connection'] = 'keep-alive'
 
         self.send_response(res.status, res.reason)
 
@@ -145,8 +170,8 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
 
         if self.websocket:
             self.handle_websocket(conn.sock)
-        else:
-            self.close_connection = True
+        # else:
+        #     self.close_connection = True
 
     def create_connection(self, origin):
         scheme, netloc = origin
@@ -166,9 +191,9 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
                 connection = ProxyAwareHTTPConnection
 
             self.tls.conns[origin] = connection(proxy_config, netloc, **kwargs)
-            print('NOT using cached connection for {}'.format(origin))
-        else:
-            print('Using cached connection for {}'.format(origin))
+            # print('NOT using cached connection for {} {}'.format(origin, self.path))
+        # else:
+            # print('Using cached connection for {} {}'.format(origin, self.path))
 
         return self.tls.conns[origin]
 
@@ -345,13 +370,14 @@ class ProxyAwareHTTPSConnection(HTTPSConnection):
         if self.use_proxy and proxy_config['https'].scheme.startswith('http'):
             # For HTTP proxies, CONNECT tunnelling is used
             super().__init__(proxy_config['https'].hostport, *args, **kwargs)
-            self.set_tunnel(
-                netloc,
-                headers=_create_auth_header(
+            headers = _create_auth_header(
                     proxy_config['https'].username,
                     proxy_config['https'].password,
                     proxy_config.get('custom_authorization')
                 )
+            self.set_tunnel(
+                netloc,
+                headers=headers
             )
         else:
             super().__init__(netloc, *args, **kwargs)
