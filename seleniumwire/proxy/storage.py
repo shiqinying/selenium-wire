@@ -31,7 +31,7 @@ class RequestStorage:
     """
 
     def __init__(self, base_dir=None):
-        """Initialises a new RequestStorage using an optional base directory.
+        """Initialise a new RequestStorage using an optional base directory.
 
         Args:
             base_dir: The directory where request and response data is stored.
@@ -50,7 +50,7 @@ class RequestStorage:
         self._lock = threading.Lock()
 
     def save_request(self, request):
-        """Saves the request to storage.
+        """Save the request to storage.
 
         Args:
             request: The request to save.
@@ -85,7 +85,7 @@ class RequestStorage:
             pickle.dump(obj, out)
 
     def save_response(self, request_id, response):
-        """Saves the response to storage.
+        """Save the response to storage.
 
         Args:
             request_id: The id of the original request.
@@ -96,7 +96,7 @@ class RequestStorage:
         if indexed_request is None:
             # Request has been cleared from storage before
             # the response arrived back
-            log.debug('Cannot save response as request {} is no longer stored'.format(request_id))
+            log.debug('Cannot save response as request {} is not stored'.format(request_id))
             return
 
         request_dir = self._get_request_dir(request_id)
@@ -111,6 +111,14 @@ class RequestStorage:
 
         indexed_request.has_response = True
 
+    def save_ws_message(self, request_id, message):
+        """Save the websocket message to storage.
+
+        Args:
+            request_id: The id of the original request.
+            message: The websocket message.
+        """
+
     def _get_indexed_request(self, request_id):
         with self._lock:
             index = self._index[:]
@@ -122,7 +130,7 @@ class RequestStorage:
         return None
 
     def load_requests(self):
-        """Loads all previously saved requests known to the storage (known to its index).
+        """Load all previously saved requests known to the storage (known to its index).
 
         The requests are returned as a list of request objects.
 
@@ -159,7 +167,7 @@ class RequestStorage:
         return request
 
     def load_request_body(self, request_id):
-        """Loads the body of the request with the specified id.
+        """Load the body of the request with the specified id.
 
         Args:
             request_id: The id of the request.
@@ -172,7 +180,7 @@ class RequestStorage:
             return b''
 
     def load_response_body(self, request_id):
-        """Loads the body of the response corresponding to the request with the specified id.
+        """Load the body of the response corresponding to the request with the specified id.
 
         Args:
             request_id: The id of the request.
@@ -211,7 +219,7 @@ class RequestStorage:
         return data
 
     def load_last_request(self):
-        """Loads the last saved request.
+        """Load the last saved request.
 
         Returns:
             The last saved request dictionary or None if no requests
@@ -226,7 +234,7 @@ class RequestStorage:
         return self._load_request(last_request.id)
 
     def clear_requests(self):
-        """Clears all requests currently known to this storage."""
+        """Clear all requests currently known to this storage."""
         with self._lock:
             index = self._index[:]
             self._index.clear()
@@ -260,8 +268,17 @@ class RequestStorage:
 
         return None
 
+    def load_ws_messages(self, request_id):
+        """Load any websocket messages corresponding to the request with the specified id.
+
+        Args:
+            request_id: The id of the request.
+        Returns:
+            A list of websocket messages. Each message is bytes.
+        """
+
     def get_cert_dir(self):
-        """Returns a storage-specific path to a directory where the SSL certificates are stored.
+        """Return a storage-specific path to a directory where the SSL certificates are stored.
 
         The directory does not have to exist.
 
@@ -274,7 +291,7 @@ class RequestStorage:
         return os.path.join(self._storage_dir, 'request-{}'.format(request_id))
 
     def cleanup(self):
-        """Removes all stored requests, the storage directory containing those
+        """Remove all stored requests, the storage directory containing those
         requests, and if that is the only storage directory, also removes the
         top level parent directory.
         """
